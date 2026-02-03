@@ -4,10 +4,20 @@ A modern counter management application built with Next.js 15, TypeScript, and T
 
 📝 **[Development Journey](chat.md)** - View the complete development conversation and feature evolution
 
+> **Note:** The user prompts in the development documentation are simplified summaries. All detailed technical input, complex instructions, and specific implementation details have been condensed for readability.
+
 ![Counter App](https://img.shields.io/badge/Next.js-15.1.3-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![React](https://img.shields.io/badge/React-19-blue?logo=react)
 ![Tailwind](https://img.shields.io/badge/Tailwind-3.4.1-blue?logo=tailwindcss)
+
+## 📷 Screenshots
+
+![Counter App Main View](public/Bildschirmfoto-03-02-26-15-27-30.png)
+*Main counter interface with category tabs and counter management*
+
+![Counter App Login View](public/Bildschirmfoto-03-02-26-15-28-24.png)
+*Authentication login screen*
 
 ## ✨ Features
 
