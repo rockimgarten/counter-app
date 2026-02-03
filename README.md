@@ -16,6 +16,9 @@ A modern counter management application built with Next.js 15, TypeScript, and T
 ![Counter App Main View](public/Bildschirmfoto-03-02-26-15-27-30.png)
 *Main counter interface with category tabs and counter management*
 
+![Counter App Main View](public/Bildschirmfoto-03-02-26-16-33-32.png)
+*Main counter interface mobile view*
+
 ![Counter App Login View](public/Bildschirmfoto-03-02-26-15-28-24.png)
 *Authentication login screen*
 
