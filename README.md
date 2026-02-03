@@ -1,65 +1,92 @@
-# Rig Clicker
+# Counter App
 
-A cryptocurrency rig clicker game built with Next.js, TypeScript, and Tailwind CSS.
+A modern counter management application built with Next.js 15, TypeScript, and Tailwind CSS. Create, manage, and track multiple counters with categories, maximums, and persistent storage via Strapi API.
 
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+![Counter App](https://img.shields.io/badge/Next.js-15.1.3-black?logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+![React](https://img.shields.io/badge/React-19-blue?logo=react)
+![Tailwind](https://img.shields.io/badge/Tailwind-3.4.1-blue?logo=tailwindcss)
 
-## Getting Started
+## ✨ Features
 
-First, install dependencies:
+- 🔢 **Multiple Counters** - Create unlimited custom counters
+- 📊 **Progress Tracking** - Set optional maximum values with completion status
+- 🏷️ **Categories** - Organize counters with custom categories and filtering
+- ✏️ **Inline Editing** - Edit counter names, maximums, and categories directly
+- 💾 **Persistent Storage** - Data saved via Strapi API backend
+- 🌐 **German Interface** - Fully localized German user interface
+- 📱 **Responsive Design** - Works on desktop, tablet, and mobile
+- 🎨 **Modern UI** - Beautiful gradient backgrounds and smooth animations
 
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 22.22.0 (LTS)
+- npm 10.9.4 or higher
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/rockimgarten/counter-app.git
+cd counter-app
+```
+
+2. Install dependencies:
 ```bash
 npm install
-# or
-yarn install
-# or
-pnpm install
-# or
-bun install
 ```
 
-Then, run the development server:
-
+3. Run the development server:
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠️ Tech Stack
 
-## Features
+- **Frontend**: [Next.js 15](https://nextjs.org/) with App Router
+- **Language**: [TypeScript 5](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS 3.4.1](https://tailwindcss.com/)
+- **UI Framework**: [React 19](https://reactjs.org/)
+- **Backend API**: [Strapi](https://strapi.io/) (hosted on Render)
+- **Deployment**: [Vercel](https://vercel.com/) (recommended)
 
-- 🖱️ Click-based cryptocurrency mining
-- ⚡ Auto-mining capabilities
-- 🔧 Upgradeable mining equipment
-- 📊 Performance tracking
-- 🏆 Leaderboard system
+## 📖 Usage
 
-## Tech Stack
+### Creating Counters
+1. Enter a counter name in the input field
+2. Optionally set a maximum value for progress tracking
+3. Optionally assign a category for organization
+4. Click "Zähler hinzufügen" to create the counter
 
-- [Next.js](https://nextjs.org/) - React framework
-- [TypeScript](https://www.typescriptlang.org/) - Type safety
-- [Tailwind CSS](https://tailwindcss.com/) - Styling
-- [ESLint](https://eslint.org/) - Code linting
+### Managing Counters
+- **Increment/Decrement**: Use the large + and - buttons
+- **Edit**: Click the pencil icon (✏️) to modify name, max, or category
+- **Delete**: Click the trash icon (🗑️) to remove a counter
+- **Filter**: Use category tabs to filter counters by category
 
-## Learn More
+### Categories
+- Auto-complete suggestions from existing categories
+- Filter counters by category using the tab navigation
+- Counter counts shown in parentheses for each category
 
-To learn more about Next.js, take a look at the following resources:
+## 📦 Available Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run dev      # Start development server
+npm run build    # Build for production
+npm start        # Start production server
+npm run lint     # Run ESLint
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## 🚀 Deployment
 
-## Deploy on Vercel
+### Deploy on Vercel (Recommended)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+1. Push your code to GitHub
+2. Go to [vercel.com](https://vercel.com) and sign up
+3. Import your GitHub repository
+4. Deploy automatically with zero configuration
