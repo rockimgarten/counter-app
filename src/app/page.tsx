@@ -12,6 +12,28 @@ interface Counter {
   category?: string;
 }
 
+interface User {
+  id: number;
+  username: string;
+  email: string;
+}
+
+interface AuthResponse {
+  jwt: string;
+  user: User;
+}
+
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+interface RegisterCredentials {
+  username: string;
+  email: string;
+  password: string;
+}
+
 interface ApiCounter {
   id: number;
   attributes: {
@@ -30,12 +52,67 @@ interface ApiResponse<T> {
   meta: {};
 }
 
-const API_BASE = 'https://your-strapi-instance.com/api/counter-app-rigs';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:1337/api/counter-app-rigs';
+const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE_URL || 'http://localhost:1337/api/auth';
+
+// Authentication functions
+const registerUser = async (credentials: RegisterCredentials): Promise<AuthResponse | null> => {
+  try {
+    const response = await fetch(`${AUTH_BASE}/local/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || 'Registration failed');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Registration failed:', error);
+    return null;
+  }
+};
+
+const loginUser = async (credentials: LoginCredentials): Promise<AuthResponse | null> => {
+  try {
+    const response = await fetch(`${AUTH_BASE}/local`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        identifier: credentials.email,
+        password: credentials.password
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || 'Login failed');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Login failed:', error);
+    return null;
+  }
+};
 
 // API functions
-const fetchCounters = async (): Promise<Counter[]> => {
+const fetchCounters = async (token: string): Promise<Counter[]> => {
   try {
-    const response = await fetch(API_BASE);
+    const response = await fetch(API_BASE, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     const result: ApiResponse<ApiCounter[]> = await response.json();
     return result.data.map(apiCounter => ({
       id: apiCounter.id.toString(),
@@ -51,11 +128,14 @@ const fetchCounters = async (): Promise<Counter[]> => {
   }
 };
 
-const createCounter = async (name: string, max?: number, category?: string): Promise<Counter | null> => {
+const createCounter = async (name: string, max?: number, category?: string, token?: string): Promise<Counter | null> => {
+  if (!token) return null;
+  
   try {
     const response = await fetch(API_BASE, {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -67,6 +147,11 @@ const createCounter = async (name: string, max?: number, category?: string): Pro
         }
       })
     });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     const result: ApiResponse<ApiCounter> = await response.json();
     return {
       id: result.data.id.toString(),
@@ -82,11 +167,14 @@ const createCounter = async (name: string, max?: number, category?: string): Pro
   }
 };
 
-const updateCounterDetails = async (serverId: number, name: string, max?: number, category?: string): Promise<boolean> => {
+const updateCounterDetails = async (serverId: number, name: string, max?: number, category?: string, token?: string): Promise<boolean> => {
+  if (!token) return false;
+  
   try {
     await fetch(`${API_BASE}/${serverId}`, {
       method: 'PUT',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -104,11 +192,14 @@ const updateCounterDetails = async (serverId: number, name: string, max?: number
   }
 };
 
-const updateCounter = async (serverId: number, count: number): Promise<boolean> => {
+const updateCounter = async (serverId: number, count: number, token?: string): Promise<boolean> => {
+  if (!token) return false;
+  
   try {
     await fetch(`${API_BASE}/${serverId}`, {
       method: 'PUT',
       headers: {
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -124,10 +215,16 @@ const updateCounter = async (serverId: number, count: number): Promise<boolean> 
   }
 };
 
-const deleteCounter = async (serverId: number): Promise<boolean> => {
+const deleteCounter = async (serverId: number, token?: string): Promise<boolean> => {
+  if (!token) return false;
+  
   try {
     await fetch(`${API_BASE}/${serverId}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
     });
     return true;
   } catch (error) {
@@ -147,6 +244,13 @@ export default function HomePage() {
   const [editingName, setEditingName] = useState('');
   const [editingMax, setEditingMax] = useState('');
   const [editingCategory, setEditingCategory] = useState('');
+  
+  // Authentication state
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // Get unique categories from existing counters
   const existingCategories = [...new Set(counters.filter(c => c.category).map(c => c.category))];
@@ -156,16 +260,43 @@ export default function HomePage() {
     ? counters 
     : counters.filter(counter => counter.category === selectedCategory);
 
-  // Load counters on component mount
+  // Check for stored authentication on component mount
+  useEffect(() => {
+    // Mark as hydrated first
+    setIsHydrated(true);
+    
+    // Only check localStorage after hydration
+    const storedToken = localStorage.getItem('authToken');
+    const storedUser = localStorage.getItem('user');
+    
+    if (storedToken && storedUser) {
+      try {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+      } catch (error) {
+        console.error('Failed to parse stored user data:', error);
+        // Clear invalid stored data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
+
+  // Load counters when user is authenticated
   useEffect(() => {
     const loadCounters = async () => {
+      if (!token) return;
+      
       setLoading(true);
-      const fetchedCounters = await fetchCounters();
+      const fetchedCounters = await fetchCounters(token);
       setCounters(fetchedCounters);
       setLoading(false);
     };
-    loadCounters();
-  }, []);
+    
+    if (token) {
+      loadCounters();
+    }
+  }, [token]);
 
   const startEditing = (counter: Counter) => {
     setEditingId(counter.id);
@@ -176,12 +307,12 @@ export default function HomePage() {
 
   const saveEdit = async () => {
     const counter = counters.find(c => c.id === editingId);
-    if (!counter || !counter.serverId) return;
+    if (!counter || !counter.serverId || !token) return;
 
     const maxValue = editingMax.trim() ? parseInt(editingMax) : undefined;
     const category = editingCategory.trim() || undefined;
     
-    const success = await updateCounterDetails(counter.serverId, editingName.trim(), maxValue, category);
+    const success = await updateCounterDetails(counter.serverId, editingName.trim(), maxValue, category, token);
     if (success) {
       setCounters(counters.map(c => 
         c.id === editingId 
@@ -202,12 +333,40 @@ export default function HomePage() {
     setEditingCategory('');
   };
 
+  // Authentication handlers
+  const handleLogin = async (credentials: LoginCredentials) => {
+    setIsAuthenticating(true);
+    setAuthError(null);
+    
+    const authData = await loginUser(credentials);
+    
+    if (authData) {
+      setUser(authData.user);
+      setToken(authData.jwt);
+      localStorage.setItem('authToken', authData.jwt);
+      localStorage.setItem('user', JSON.stringify(authData.user));
+    } else {
+      setAuthError('Anmeldung fehlgeschlagen. Bitte überprüfen Sie Ihre Angaben.');
+    }
+    
+    setIsAuthenticating(false);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    setCounters([]);
+    setAuthError(null);
+  };
+
   const addCounter = async () => {
-    if (newCounterName.trim()) {
+    if (newCounterName.trim() && token) {
       setLoading(true);
       const maxValue = newCounterMax.trim() ? parseInt(newCounterMax) : undefined;
       const category = newCounterCategory.trim() || undefined;
-      const newCounter = await createCounter(newCounterName.trim(), maxValue, category);
+      const newCounter = await createCounter(newCounterName.trim(), maxValue, category, token);
       
       if (newCounter) {
         setCounters([...counters, newCounter]);
@@ -221,7 +380,7 @@ export default function HomePage() {
 
   const handleUpdateCounter = async (id: string, delta: number) => {
     const counter = counters.find(c => c.id === id);
-    if (!counter || !counter.serverId) return;
+    if (!counter || !counter.serverId || !token) return;
 
     const newCount = counter.count + delta;
     const minCount = Math.max(0, newCount);
@@ -233,7 +392,7 @@ export default function HomePage() {
     ));
 
     // Update on server
-    const success = await updateCounter(counter.serverId, maxCount);
+    const success = await updateCounter(counter.serverId, maxCount, token);
     if (!success) {
       // Revert on failure
       setCounters(counters.map(c => 
@@ -244,12 +403,12 @@ export default function HomePage() {
 
   const removeCounter = async (id: string) => {
     const counter = counters.find(c => c.id === id);
-    if (!counter || !counter.serverId) return;
+    if (!counter || !counter.serverId || !token) return;
 
     // Optimistic delete
     setCounters(counters.filter(c => c.id !== id));
 
-    const success = await deleteCounter(counter.serverId);
+    const success = await deleteCounter(counter.serverId, token);
     if (!success) {
       // Revert on failure
       setCounters([...counters, counter]);
@@ -295,6 +454,78 @@ export default function HomePage() {
         <h1 className="text-5xl font-extrabold tracking-tight text-center mb-12">
           <span className="text-yellow-400">Counter</span> App
         </h1>
+
+        {!isHydrated ? (
+          /* Loading state during hydration */
+          <div className="text-center text-white/70 py-12">
+            <p className="text-xl">Laden...</p>
+          </div>
+        ) : !user ? (
+          /* Authentication UI */
+          <div className="bg-white/10 rounded-xl p-8 max-w-md mx-auto">
+            <h2 className="text-2xl font-bold mb-6 text-center">Anmelden</h2>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              const credentials = {
+                email: formData.get('email') as string,
+                password: formData.get('password') as string
+              };
+              handleLogin(credentials);
+            }}>
+              <div className="space-y-4">
+                {/* Development notice */}
+                <div className="text-yellow-300 text-sm text-center bg-yellow-400/10 p-3 rounded">
+                  💡 Verwenden Sie Ihre Strapi-Anmeldedaten
+                </div>
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="E-Mail"
+                  className="w-full px-4 py-2 rounded bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  required
+                />
+                <input
+                  name="password"
+                  type="password"
+                  placeholder="Passwort"
+                  className="w-full px-4 py-2 rounded bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  required
+                  minLength={6}
+                />
+                
+                {authError && (
+                  <div className="text-red-400 text-sm text-center">
+                    {authError}
+                  </div>
+                )}
+                
+                <button
+                  type="submit"
+                  disabled={isAuthenticating}
+                  className="w-full px-4 py-2 bg-yellow-400 text-blue-800 font-bold rounded hover:bg-yellow-300 disabled:opacity-50 transition-colors"
+                >
+                  {isAuthenticating ? 'Anmelden...' : 'Anmelden'}
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          /* Main Counter Interface */
+          <>
+            {/* User info and logout */}
+            <div className="flex justify-between items-center mb-8">
+              <div className="text-white/70">
+                Willkommen, {user.username}!
+              </div>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 bg-red-500 hover:bg-red-400 text-white font-bold rounded transition-colors"
+              >
+                Abmelden
+              </button>
+            </div>
         
         {/* Add new counter form */}
         <div className="bg-white/10 rounded-xl p-6 mb-8">
@@ -521,6 +752,8 @@ export default function HomePage() {
             })
           )}
         </div>
+        </>  
+        )}
       </div>
     </main>
   );

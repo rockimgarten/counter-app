@@ -2,6 +2,8 @@
 
 A modern counter management application built with Next.js 15, TypeScript, and Tailwind CSS. Create, manage, and track multiple counters with categories, maximums, and persistent storage via Strapi API.
 
+📝 **[Development Journey](chat.md)** - View the complete development conversation and feature evolution
+
 ![Counter App](https://img.shields.io/badge/Next.js-15.1.3-black?logo=next.js)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
 ![React](https://img.shields.io/badge/React-19-blue?logo=react)
@@ -38,7 +40,13 @@ cd counter-app
 npm install
 ```
 
-3. Run the development server:
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+# Edit .env.local with your Strapi backend URLs
+```
+
+4. Run the development server:
 ```bash
 npm run dev
 ```
