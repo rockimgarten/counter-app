@@ -244,6 +244,7 @@ export default function HomePage() {
   const [editingName, setEditingName] = useState('');
   const [editingMax, setEditingMax] = useState('');
   const [editingCategory, setEditingCategory] = useState('');
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
   
   // Authentication state
   const [user, setUser] = useState<User | null>(null);
@@ -331,6 +332,16 @@ export default function HomePage() {
     setEditingName('');
     setEditingMax('');
     setEditingCategory('');
+  };
+
+  const toggleMenu = (counterId: string) => {
+    const newExpandedMenus = new Set(expandedMenus);
+    if (newExpandedMenus.has(counterId)) {
+      newExpandedMenus.delete(counterId);
+    } else {
+      newExpandedMenus.add(counterId);
+    }
+    setExpandedMenus(newExpandedMenus);
   };
 
   // Authentication handlers
@@ -634,119 +645,175 @@ export default function HomePage() {
             filteredCounters.map((counter) => {
               const isCompleted = counter.max && counter.count >= counter.max;
               const isEditing = editingId === counter.id;
+              const isMenuExpanded = expandedMenus.has(counter.id);
               
               return (
-                <div key={counter.id} className="bg-white/10 rounded-xl p-6 flex items-center justify-between">
-                  <div className="flex-1">
-                    {isEditing ? (
-                      <div className="space-y-4">
-                        <div className="flex gap-2 flex-wrap">
-                          <input
-                            type="text"
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            placeholder="Zählername"
-                            className="flex-1 min-w-48 px-3 py-1 rounded bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                          />
-                          <input
-                            type="number"
-                            value={editingMax}
-                            onChange={(e) => setEditingMax(e.target.value)}
-                            placeholder="Maximum"
-                            min="1"
-                            className="w-24 px-3 py-1 rounded bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                          />
-                          <input
-                            type="text"
-                            value={editingCategory}
-                            onChange={(e) => setEditingCategory(e.target.value)}
-                            placeholder="Kategorie"
-                            list="edit-categories"
-                            className="w-32 px-3 py-1 rounded bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                          />
-                          {existingCategories.length > 0 && (
-                            <datalist id="edit-categories">
-                              {existingCategories.map((category) => (
-                                <option key={category} value={category} />
-                              ))}
-                            </datalist>
-                          )}
+                <div 
+                  key={counter.id} 
+                  className={`rounded-xl p-4 transition-colors ${
+                    isCompleted 
+                      ? 'bg-green-500/20 border-2 border-green-500/50' 
+                      : 'bg-white/10 border-2 border-transparent'
+                  }`}
+                >
+                  {isEditing ? (
+                    <div className="space-y-4">
+                      <div className="flex gap-2 flex-wrap">
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          placeholder="Zählername"
+                          className="flex-1 min-w-48 px-3 py-1 rounded bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        />
+                        <input
+                          type="number"
+                          value={editingMax}
+                          onChange={(e) => setEditingMax(e.target.value)}
+                          placeholder="Maximum"
+                          min="1"
+                          className="w-24 px-3 py-1 rounded bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        />
+                        <input
+                          type="text"
+                          value={editingCategory}
+                          onChange={(e) => setEditingCategory(e.target.value)}
+                          placeholder="Kategorie"
+                          list="edit-categories"
+                          className="w-32 px-3 py-1 rounded bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        />
+                        {existingCategories.length > 0 && (
+                          <datalist id="edit-categories">
+                            {existingCategories.map((category) => (
+                              <option key={category} value={category} />
+                            ))}
+                          </datalist>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={saveEdit}
+                          className="px-3 py-1 bg-green-500 hover:bg-green-400 text-white text-sm font-bold rounded transition-colors"
+                        >
+                          Speichern
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="px-3 py-1 bg-gray-500 hover:bg-gray-400 text-white text-sm font-bold rounded transition-colors"
+                        >
+                          Abbrechen
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Main counter info - always visible */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-lg font-bold truncate">{counter.name}</h3>
+                          </div>
+                          <div className="flex items-baseline gap-2 mb-1">
+                            <span className="text-2xl font-extrabold text-yellow-400">{counter.count}</span>
+                            {counter.max && (
+                              <span className="text-sm text-white/70">/ {counter.max}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {counter.category && (
+                              <span className="bg-blue-500 text-white px-2 py-0.5 rounded text-xs font-medium hidden sm:inline-block">
+                                {counter.category}
+                              </span>
+                            )}
+                            {isCompleted && (
+                              <span className="bg-green-500 text-white px-2 py-0.5 rounded text-xs font-medium">
+                                Abgeschlossen
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex gap-2">
+                        
+                        {/* Main action buttons */}
+                        <div className="flex gap-2 items-center">
+                          {/* Desktop edit/delete - small icons */}
+                          <div className="hidden sm:flex gap-1 items-center opacity-70 hover:opacity-100 transition-opacity mr-2">
+                            <button
+                              onClick={() => startEditing(counter)}
+                              className="w-8 h-8 bg-blue-500 hover:bg-blue-400 text-white font-bold text-xs rounded-md transition-colors disabled:opacity-50"
+                              title="Zähler bearbeiten"
+                              disabled={loading}
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => removeCounter(counter.id)}
+                              className="w-8 h-8 bg-red-500 hover:bg-red-400 text-white font-bold text-xs rounded-md transition-colors disabled:opacity-50"
+                              title="Zähler löschen"
+                              disabled={loading || isEditing}
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                          
+                          {/* Mobile menu toggle */}
                           <button
-                            onClick={saveEdit}
-                            className="px-3 py-1 bg-green-500 hover:bg-green-400 text-white text-sm font-bold rounded transition-colors"
+                            onClick={() => toggleMenu(counter.id)}
+                            className="w-8 h-8 bg-white/20 hover:bg-white/30 text-white font-bold text-sm rounded-md transition-colors sm:hidden"
+                            title="Menü"
                           >
-                            Speichern
+                            ⚙️
                           </button>
-                          <button
-                            onClick={cancelEdit}
-                            className="px-3 py-1 bg-gray-500 hover:bg-gray-400 text-white text-sm font-bold rounded transition-colors"
-                          >
-                            Abbrechen
-                          </button>
+                          
+                          {/* Plus/Minus buttons */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleUpdateCounter(counter.id, -1)}
+                              className="w-12 h-12 bg-red-500 hover:bg-red-400 text-white font-bold text-xl rounded-lg transition-colors disabled:opacity-50 shadow-lg"
+                              disabled={counter.count === 0 || loading || isEditing}
+                            >
+                              −
+                            </button>
+                            <button
+                              onClick={() => handleUpdateCounter(counter.id, 1)}
+                              className="w-12 h-12 bg-green-500 hover:bg-green-400 text-white font-bold text-xl rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                              disabled={isCompleted || loading || isEditing}
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <h3 className="text-xl font-bold">{counter.name}</h3>
-                        {counter.category && (
-                          <span className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium">
+                      
+                      {/* Category on mobile when not enough space */}
+                      {counter.category && (
+                        <div className="sm:hidden">
+                          <span className="bg-blue-500 text-white px-2 py-0.5 rounded text-xs font-medium">
                             {counter.category}
                           </span>
-                        )}
-                        {isCompleted && (
-                          <span className="bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold">
-                            Abgeschlossen
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    <p className="text-3xl font-extrabold text-yellow-400 mt-2">
-                      {counter.count}
-                      {counter.max && (
-                        <span className="text-lg text-white/70 ml-2">/ {counter.max}</span>
+                        </div>
                       )}
-                    </p>
-                  </div>
-                  <div className="flex gap-3 items-center">
-                    {/* Secondary actions - less prominent */}
-                    <div className="flex gap-1 items-center opacity-70 hover:opacity-100 transition-opacity">
-                      {!isEditing && (
+                      
+                      {/* Edit/Delete actions - mobile only */}
+                      <div className={`flex gap-2 sm:hidden ${isMenuExpanded ? 'block' : 'hidden'}`}>
                         <button
                           onClick={() => startEditing(counter)}
-                          className="w-8 h-8 bg-blue-500 hover:bg-blue-400 text-white font-bold text-xs rounded-md transition-colors disabled:opacity-50"
+                          className="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium rounded transition-colors disabled:opacity-50"
                           title="Zähler bearbeiten"
                           disabled={loading}
                         >
-                          ✏️
+                          ✏️ Bearbeiten
                         </button>
-                      )}
-                      <button
-                        onClick={() => removeCounter(counter.id)}
-                        className="w-8 h-8 bg-gray-500 hover:bg-gray-400 text-white font-bold text-xs rounded-md transition-colors disabled:opacity-50"
-                        title="Zähler löschen"
-                        disabled={loading || isEditing}
-                      >
-                        🗑️
-                      </button>
+                        <button
+                          onClick={() => removeCounter(counter.id)}
+                          className="flex-1 px-3 py-2 bg-red-500 hover:bg-red-400 text-white text-sm font-medium rounded transition-colors disabled:opacity-50"
+                          title="Zähler löschen"
+                          disabled={loading || isEditing}
+                        >
+                          🗑️ Löschen
+                        </button>
+                      </div>
                     </div>
-                    {/* Main action buttons - more prominent */}
-                    <button
-                      onClick={() => handleUpdateCounter(counter.id, -1)}
-                      className="w-16 h-16 bg-red-500 hover:bg-red-400 text-white font-bold text-3xl rounded-xl transition-colors disabled:opacity-50 shadow-lg"
-                      disabled={counter.count === 0 || loading || isEditing}
-                    >
-                      −
-                    </button>
-                    <button
-                      onClick={() => handleUpdateCounter(counter.id, 1)}
-                      className="w-16 h-16 bg-green-500 hover:bg-green-400 text-white font-bold text-3xl rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                      disabled={isCompleted || loading || isEditing}
-                    >
-                      +
-                    </button>
-                  </div>
+                  )}
                 </div>
               );
             })

@@ -342,7 +342,7 @@ All commits pushed to GitHub repository: `https://github.com/rockimgarten/counte
 
 ## Recent Documentation and Deployment Updates
 
-**User:** add miising chat conversation to chat.md without adding sensetiv inforamtion and create a git commit for that
+**User:** add missing chat conversation to chat.md without adding sensitive information and create a git commit for that
 
 **Assistant:** 
 - Added comprehensive missing chat conversation sections to documentation
@@ -350,7 +350,7 @@ All commits pushed to GitHub repository: `https://github.com/rockimgarten/counte
 - Created git commit with organized commit message
 - Maintained security by excluding all sensitive information from documentation
 
-**User:** how to redeploy vercel app after enviorment variable update?
+**User:** how to redeploy vercel app after environment variable update?
 
 **Assistant:**
 - Provided comprehensive Vercel redeployment guide
@@ -358,16 +358,12 @@ All commits pushed to GitHub repository: `https://github.com/rockimgarten/counte
 - Detailed environment variable configuration in Vercel dashboard
 - Explained automatic deployment triggers and manual options
 
-**User:** please add my whole prompts to chac.md
+**User:** please add my whole prompts to chat.md
 
 **Assistant:**
 - Updated chat.md to include complete user prompts for better documentation
 - Preserved exact user language and requests for historical accuracy
 - Enhanced documentation completeness for future reference
-
-**User:** please metion in read me and chat.md that this user promts are super simplified and all technical input was removed
-
-**Assistant:**
 - Added disclaimers to both README.md and chat.md files
 - Explained that user prompts are simplified summaries
 - Clarified that technical details and complex instructions were condensed for readability
@@ -384,7 +380,7 @@ All commits pushed to GitHub repository: `https://github.com/rockimgarten/counte
 
 ## Mobile UI Optimization
 
-**User:** on mobile the elemts are to much on the screen. can we hide the edit and delet button behind a foldable arrow and let lable and completed sign use less space. maybe we can show the completed stat by using a difftern bacground or fold them together and just show the name, amount and complete
+**User:** on mobile the elements are too much on the screen. can we hide the edit and delete button behind a foldable arrow and let label and completed sign use less space. maybe we can show the completed status by using a different background or fold them together and just show the name, amount and complete
 
 **Assistant:**
 - Implemented collapsible mobile menu system with gear icon toggle
@@ -393,7 +389,7 @@ All commits pushed to GitHub repository: `https://github.com/rockimgarten/counte
 - Implemented responsive category display
 - Optimized information hierarchy for mobile screens
 
-**User:** keep the small bin and pencil on desktop view. use and gear icon instead of the play arrow on mobile. add the complet lable under the puls and minus buttons.
+**User:** keep the small bin and pencil on desktop view. use a gear icon instead of the play arrow on mobile. add the complete label under the plus and minus buttons.
 
 **Assistant:**
 - Preserved small icon interface for desktop users
@@ -401,7 +397,7 @@ All commits pushed to GitHub repository: `https://github.com/rockimgarten/counte
 - Positioned completion status under action buttons
 - Maintained responsive design for both screen sizes
 
-**User:** hide the big edit and delete button from desktop fie. show a similar lable for compledes as for category.
+**User:** hide the big edit and delete button from desktop view. show a similar label for completed as for category.
 
 **Assistant:**
 - Removed large edit/delete buttons from desktop view
@@ -416,27 +412,27 @@ All commits pushed to GitHub repository: `https://github.com/rockimgarten/counte
 - Centered badge under both +/- buttons
 - Maintained badge styling consistency
 
-**User:** move it bit down so thats the same hide from bottom as the category badge on mobile
+**User:** move it a bit down so that's the same distance from bottom as the category badge on mobile
 
 **Assistant:**
 - Adjusted spacing to align completion badge position
 - Used consistent visual spacing across elements
 
-**User:** can you position it relative to the bottome of the counter element?
+**User:** can you position it relative to the bottom of the counter element?
 
 **Assistant:**
 - Positioned completion badge at bottom of entire counter card
 - Used bottom-anchored layout with centered alignment
 - Provided dedicated space for completion status
 
-**User:** category and complete bage are still not on the same line
+**User:** category and complete badge are still not on the same line
 
 **Assistant:**
 - Moved completion badge back to header line with category
 - Aligned both badges on same line for consistent layout
 - Created uniform design hierarchy
 
-**User:** put the coutre name behine the amount
+**User:** put the counter name behind the amount
 
 **Assistant:**
 - Reordered layout to show amount first, then counter name
@@ -450,7 +446,7 @@ All commits pushed to GitHub repository: `https://github.com/rockimgarten/counte
 - Created logical reading flow: Name → Count → Maximum
 - Maintained clear visual hierarchy
 
-**User:** put amount an an extra line
+**User:** put amount on an extra line
 
 **Assistant:**
 - Created three-line layout structure:
