@@ -43,12 +43,8 @@
 **User:** connect to api to save and load
 
 **Assistant:** 
-- Integrated with Strapi backend at `https://your-strapi-instance.com/api/counter-app-rigs`
-- Implemented full CRUD operations:
-  - `fetchCounters()` - Load existing counters
-  - `createCounter()` - Add new counters
-  - `updateCounter()` - Save counter value changes
-  - `deleteCounter()` - Remove counters
+- Integrated with Strapi backend for data persistence
+- Implemented full CRUD operations for counters
 - Added optimistic UI updates for better user experience
 - Implemented proper error handling and loading states
 
