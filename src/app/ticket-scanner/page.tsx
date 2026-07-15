@@ -6,9 +6,11 @@ import Link from 'next/link';
 
 export default function TicketScannerPage() {
     const [qrCode, setQrCode] = useState('');
+    const [orderNumber, setOrderNumber] = useState('');
     const [loading, setLoading] = useState(false);
     const [response, setResponse] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
+    const [searchMode, setSearchMode] = useState<'qr' | 'order'>('qr');
 
     const validateQrCode = async () => {
         if (!qrCode.trim()) {
@@ -36,8 +38,35 @@ export default function TicketScannerPage() {
         }
     };
 
+    const validateOrderNumber = async () => {
+        if (!orderNumber.trim()) {
+            setError('Please enter a bestellnummer');
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+        setResponse(null);
+
+        try {
+            const res = await fetch(`/api/validate-qr?bestellnummer=${encodeURIComponent(orderNumber)}`);
+            const data = await res.json();
+
+            if (!res.ok) {
+                setError(data.error || 'Failed to validate order number');
+            } else {
+                setResponse(data);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to validate order number');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const matchedOrder = response?.matched_bestellung;
     const qrCodes = matchedOrder?.qr_codes || response?.qr_codes || [];
+    const orderQrCodes = response?.matched_qr_codes_by_bestellnummer || [];
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-start p-8 text-white" style={{ background: 'linear-gradient(180deg, #009860, #163a4c)' }}>
@@ -101,26 +130,67 @@ export default function TicketScannerPage() {
                 <div className="bg-white/10 rounded-xl p-8 max-w-2xl mx-auto">
                     <h2 className="text-2xl font-bold mb-6 text-center">Validate QR Code</h2>
 
-                    <div className="space-y-4">
-                        <div>
-                            <input
-                                type="text"
-                                value={qrCode}
-                                onChange={(e) => setQrCode(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && !loading && validateQrCode()}
-                                placeholder="Enter QR code or ticket code..."
-                                className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                                disabled={loading}
-                            />
-                        </div>
-
+                    <div className="mb-6 flex rounded-full bg-white/10 p-1">
                         <button
-                            onClick={validateQrCode}
-                            disabled={loading}
-                            className="w-full px-4 py-3 bg-yellow-400 text-blue-800 font-bold rounded-lg hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            onClick={() => setSearchMode('qr')}
+                            className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${searchMode === 'qr' ? 'bg-yellow-400 text-blue-800' : 'text-white/80 hover:bg-white/20'}`}
                         >
-                            {loading ? 'Validating...' : 'Validate Code'}
+                            Via QR Code
                         </button>
+                        <button
+                            onClick={() => setSearchMode('order')}
+                            className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${searchMode === 'order' ? 'bg-yellow-400 text-blue-800' : 'text-white/80 hover:bg-white/20'}`}
+                        >
+                            Via Bestellnummer
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        {searchMode === 'qr' ? (
+                            <>
+                                <div>
+                                    <input
+                                        type="text"
+                                        value={qrCode}
+                                        onChange={(e) => setQrCode(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && !loading && validateQrCode()}
+                                        placeholder="Enter QR code or ticket code..."
+                                        className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                                        disabled={loading}
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={validateQrCode}
+                                    disabled={loading}
+                                    className="w-full px-4 py-3 bg-yellow-400 text-blue-800 font-bold rounded-lg hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    {loading ? 'Validating...' : 'Validate Code'}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <div>
+                                    <input
+                                        type="text"
+                                        value={orderNumber}
+                                        onChange={(e) => setOrderNumber(e.target.value)}
+                                        onKeyPress={(e) => e.key === 'Enter' && !loading && validateOrderNumber()}
+                                        placeholder="Enter bestellnummer..."
+                                        className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                                        disabled={loading}
+                                    />
+                                </div>
+
+                                <button
+                                    onClick={validateOrderNumber}
+                                    disabled={loading}
+                                    className="w-full px-4 py-3 bg-yellow-400 text-blue-800 font-bold rounded-lg hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    {loading ? 'Searching...' : 'Search Order'}
+                                </button>
+                            </>
+                        )}
 
                         {error && (
                             <div className="p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-200">
@@ -130,7 +200,37 @@ export default function TicketScannerPage() {
 
                         {response && (
                             <div className="p-4 bg-green-500/20 border border-green-500 rounded-lg text-green-200">
-                                {matchedOrder ? (
+                                {orderQrCodes.length > 0 ? (
+                                    <div className="space-y-4 text-left">
+                                        <div>
+                                            <h3 className="text-lg font-semibold text-white">QR-Codes für Bestellnummer gefunden</h3>
+                                            <p className="mt-1 text-sm text-white/80">
+                                                Klicken Sie auf einen Eintrag, um den Code im oberen Feld zu verwenden.
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-lg bg-white/10 p-4">
+                                            <div className="mt-3 space-y-2">
+                                                {orderQrCodes.map((qr: any, index: number) => (
+                                                    <button
+                                                        key={`${qr.qr_code_data || qr.ticket_no}-${index}`}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setQrCode(qr.qr_code_data);
+                                                            setSearchMode('qr');
+                                                        }}
+                                                        className="w-full rounded bg-black/10 p-3 text-left text-sm transition-colors hover:bg-black/20"
+                                                    >
+                                                        <div className="font-medium text-white">{qr.qr_code_data}</div>
+                                                        <div className="text-white/70">
+                                                            Ticket Nr.: {qr.ticket_no} · Produkt-ID: {qr.productId} · HMAC: {qr.hmac}
+                                                        </div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : matchedOrder ? (
                                     <div className="space-y-4 text-left">
                                         <div>
                                             <h3 className="text-lg font-semibold text-white">Bestellung gefunden</h3>
