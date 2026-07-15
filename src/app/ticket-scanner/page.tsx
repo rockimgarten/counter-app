@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import jsQR from 'jsqr';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -17,8 +17,10 @@ export default function TicketScannerPage() {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-    const validateQrCode = async () => {
-        if (!qrCode.trim()) {
+    const validateQrCode = useCallback(async (valueToValidate?: string) => {
+        const normalizedCode = (valueToValidate ?? qrCode).trim();
+
+        if (!normalizedCode) {
             setError('Please enter a code');
             return;
         }
@@ -28,7 +30,7 @@ export default function TicketScannerPage() {
         setResponse(null);
 
         try {
-            const res = await fetch(`/api/validate-qr?qr=${encodeURIComponent(qrCode)}`);
+            const res = await fetch(`/api/validate-qr?qr=${encodeURIComponent(normalizedCode)}`);
             const data = await res.json();
 
             if (!res.ok) {
@@ -41,6 +43,10 @@ export default function TicketScannerPage() {
         } finally {
             setLoading(false);
         }
+    }, [qrCode]);
+
+    const handleValidateQrCode = () => {
+        void validateQrCode();
     };
 
     const validateOrderNumber = async () => {
@@ -130,6 +136,7 @@ export default function TicketScannerPage() {
                         setIsScanning(false);
                         setCameraError(null);
                         cancelled = true;
+                        void validateQrCode(code.data);
                         return;
                     }
 
@@ -156,7 +163,7 @@ export default function TicketScannerPage() {
                 stream.getTracks().forEach((track) => track.stop());
             }
         };
-    }, [isScanning]);
+    }, [isScanning, validateQrCode]);
 
     const startCameraScan = async () => {
         setError(null);
@@ -258,7 +265,9 @@ export default function TicketScannerPage() {
                                     <input
                                         type="text"
                                         value={qrCode}
-                                        onChange={(e) => setQrCode(e.target.value)}
+                                        onChange={(e) => {
+                                            setQrCode(e.target.value);
+                                        }}
                                         onKeyPress={(e) => e.key === 'Enter' && !loading && validateQrCode()}
                                         placeholder="Enter QR code or ticket code..."
                                         className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
@@ -268,7 +277,7 @@ export default function TicketScannerPage() {
 
                                 <div className="flex gap-3">
                                     <button
-                                        onClick={validateQrCode}
+                                        onClick={handleValidateQrCode}
                                         disabled={loading}
                                         className="flex-1 px-4 py-3 bg-yellow-400 text-blue-800 font-bold rounded-lg hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
