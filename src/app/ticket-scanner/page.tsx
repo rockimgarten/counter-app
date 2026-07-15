@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import jsQR from 'jsqr';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -11,6 +12,10 @@ export default function TicketScannerPage() {
     const [response, setResponse] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [searchMode, setSearchMode] = useState<'qr' | 'order'>('qr');
+    const [isScanning, setIsScanning] = useState(false);
+    const [cameraError, setCameraError] = useState<string | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
     const validateQrCode = async () => {
         if (!qrCode.trim()) {
@@ -67,6 +72,107 @@ export default function TicketScannerPage() {
     const matchedOrder = response?.matched_bestellung;
     const qrCodes = matchedOrder?.qr_codes || response?.qr_codes || [];
     const orderQrCodes = response?.matched_qr_codes_by_bestellnummer || [];
+
+    useEffect(() => {
+        if (!isScanning) return;
+
+        let stream: MediaStream | null = null;
+        let cancelled = false;
+        let intervalId: number | undefined;
+
+        const startCamera = async () => {
+            try {
+                if (!navigator.mediaDevices?.getUserMedia) {
+                    throw new Error('Your browser does not support camera access.');
+                }
+
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+
+                if (cancelled || !videoRef.current) {
+                    stream.getTracks().forEach((track) => track.stop());
+                    return;
+                }
+
+                videoRef.current.srcObject = stream;
+                await videoRef.current.play();
+                setCameraError(null);
+
+                const scanFrame = () => {
+                    if (cancelled || !videoRef.current || !canvasRef.current) return;
+
+                    const video = videoRef.current;
+                    const canvas = canvasRef.current;
+                    const context = canvas.getContext('2d');
+
+                    if (!context || video.readyState < 2) {
+                        intervalId = window.setTimeout(scanFrame, 200);
+                        return;
+                    }
+
+                    const width = video.videoWidth;
+                    const height = video.videoHeight;
+
+                    if (!width || !height) {
+                        intervalId = window.setTimeout(scanFrame, 200);
+                        return;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    context.drawImage(video, 0, 0, width, height);
+
+                    const imageData = context.getImageData(0, 0, width, height);
+                    const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                    if (code) {
+                        setQrCode(code.data);
+                        setSearchMode('qr');
+                        setIsScanning(false);
+                        setCameraError(null);
+                        cancelled = true;
+                        return;
+                    }
+
+                    intervalId = window.setTimeout(scanFrame, 200);
+                };
+
+                scanFrame();
+            } catch (err) {
+                if (!cancelled) {
+                    setCameraError(err instanceof Error ? err.message : 'Camera access failed');
+                    setIsScanning(false);
+                }
+            }
+        };
+
+        startCamera();
+
+        return () => {
+            cancelled = true;
+            if (intervalId) {
+                window.clearTimeout(intervalId);
+            }
+            if (stream) {
+                stream.getTracks().forEach((track) => track.stop());
+            }
+        };
+    }, [isScanning]);
+
+    const startCameraScan = async () => {
+        setError(null);
+        setCameraError(null);
+        setIsScanning(true);
+    };
+
+    const stopCameraScan = () => {
+        setIsScanning(false);
+        setCameraError(null);
+        if (videoRef.current?.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach((track) => track.stop());
+            videoRef.current.srcObject = null;
+        }
+    };
 
     return (
         <main className="flex min-h-screen flex-col items-center justify-start p-8 text-white" style={{ background: 'linear-gradient(180deg, #009860, #163a4c)' }}>
@@ -160,13 +266,41 @@ export default function TicketScannerPage() {
                                     />
                                 </div>
 
-                                <button
-                                    onClick={validateQrCode}
-                                    disabled={loading}
-                                    className="w-full px-4 py-3 bg-yellow-400 text-blue-800 font-bold rounded-lg hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    {loading ? 'Validating...' : 'Validate Code'}
-                                </button>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={validateQrCode}
+                                        disabled={loading}
+                                        className="flex-1 px-4 py-3 bg-yellow-400 text-blue-800 font-bold rounded-lg hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        {loading ? 'Validating...' : 'Validate Code'}
+                                    </button>
+                                    <button
+                                        onClick={isScanning ? stopCameraScan : startCameraScan}
+                                        className="px-4 py-3 bg-white/20 text-white font-semibold rounded-lg hover:bg-white/30 transition-colors"
+                                    >
+                                        {isScanning ? 'Stop Camera' : 'Scan with Camera'}
+                                    </button>
+                                </div>
+
+                                <div className="rounded-lg border border-white/20 bg-black/20 p-3">
+                                    {isScanning ? (
+                                        <>
+                                            <video ref={videoRef} className="w-full rounded-lg bg-black" playsInline muted />
+                                            <canvas ref={canvasRef} className="hidden" />
+                                            <p className="mt-2 text-sm text-white/70">Point your camera at the QR code and hold still.</p>
+                                        </>
+                                    ) : (
+                                        <div className="rounded-lg border border-dashed border-white/20 p-4 text-center text-sm text-white/70">
+                                            Use the camera button to scan a QR code directly from your phone.
+                                        </div>
+                                    )}
+                                </div>
+
+                                {cameraError && (
+                                    <div className="p-4 bg-red-500/20 border border-red-500 rounded-lg text-red-200">
+                                        {cameraError}
+                                    </div>
+                                )}
                             </>
                         ) : (
                             <>
