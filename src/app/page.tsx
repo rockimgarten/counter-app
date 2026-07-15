@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 interface Counter {
   id: string;
@@ -450,6 +451,23 @@ export default function HomePage() {
       </div>
       
       <div className="container max-w-4xl">
+        <div className="flex justify-center mb-6">
+          <div className="inline-flex rounded-full bg-white/10 p-1 backdrop-blur-sm">
+            <Link
+              href="/"
+              className="rounded-full px-4 py-2 text-sm font-semibold text-white bg-yellow-400 text-blue-800"
+            >
+              Counter App
+            </Link>
+            <Link
+              href="/ticket-scanner"
+              className="rounded-full px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/20"
+            >
+              Ticket Scanner
+            </Link>
+          </div>
+        </div>
+
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <Image
