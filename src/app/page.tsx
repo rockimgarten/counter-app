@@ -18,6 +18,10 @@ interface User {
   id: number;
   username: string;
   email: string;
+  role?: {
+    type?: string;
+    name?: string;
+  };
 }
 
 interface AuthResponse {
@@ -56,12 +60,12 @@ interface ApiResponse<T> {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:1337/api/counter-app-rigs';
-const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE_URL || 'http://localhost:1337/api/auth';
+const AUTH_BASE = process.env.NEXT_PUBLIC_AUTH_BASE_URL || 'http://localhost:1337/api';
 
 // Authentication functions
 const registerUser = async (credentials: RegisterCredentials): Promise<AuthResponse | null> => {
   try {
-    const response = await fetch(`${AUTH_BASE}/local/register`, {
+    const response = await fetch(`${AUTH_BASE}/auth/local/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials)
@@ -81,7 +85,7 @@ const registerUser = async (credentials: RegisterCredentials): Promise<AuthRespo
 
 const loginUser = async (credentials: LoginCredentials): Promise<AuthResponse | null> => {
   try {
-    const response = await fetch(`${AUTH_BASE}/local`, {
+    const response = await fetch(`${AUTH_BASE}/auth/local`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -98,6 +102,25 @@ const loginUser = async (credentials: LoginCredentials): Promise<AuthResponse | 
     return await response.json();
   } catch (error) {
     console.error('Login failed:', error);
+    return null;
+  }
+};
+
+const fetchUserWithRole = async (token: string): Promise<User | null> => {
+  try {
+    const userResponse = await fetch(`${AUTH_BASE}/users/me?populate=role`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!userResponse.ok) {
+      throw new Error(`HTTP error! status: ${userResponse.status}`);
+    }
+
+    const userData: User = await userResponse.json();
+    return userData;
+  } catch (error) {
+    console.error('Failed to fetch user role:', error);
     return null;
   }
 };
@@ -261,6 +284,7 @@ export default function HomePage() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const hasAuthenticatedRole = user?.role?.type === 'authenticated' || user?.role?.name?.toLowerCase() === 'authenticated';
 
   // Get unique categories from existing counters
   const existingCategories = [...new Set(counters.filter(c => c.category).map(c => c.category))];
@@ -282,7 +306,16 @@ export default function HomePage() {
     if (storedToken && storedUser) {
       try {
         setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser) as User;
+        setUser(parsedUser);
+
+        void (async () => {
+          const freshUser = await fetchUserWithRole(storedToken);
+          if (freshUser) {
+            setUser(freshUser);
+            localStorage.setItem('user', JSON.stringify(freshUser));
+          }
+        })();
       } catch (error) {
         console.error('Failed to parse stored user data:', error);
         // Clear invalid stored data
@@ -365,10 +398,12 @@ export default function HomePage() {
     const authData = await loginUser(credentials);
 
     if (authData) {
-      setUser(authData.user);
       setToken(authData.jwt);
+      const userWithRole = await fetchUserWithRole(authData.jwt);
+      const resolvedUser = userWithRole || authData.user;
+      setUser(resolvedUser);
       localStorage.setItem('authToken', authData.jwt);
-      localStorage.setItem('user', JSON.stringify(authData.user));
+      localStorage.setItem('user', JSON.stringify(resolvedUser));
     } else {
       setAuthError('Anmeldung fehlgeschlagen. Bitte überprüfen Sie Ihre Angaben.');
     }
@@ -571,65 +606,67 @@ export default function HomePage() {
             </div>
 
             {/* Add new counter form */}
-            <div className="bg-white/10 rounded-xl p-6 mb-8">
-              <h2 className="text-2xl font-bold mb-4">Neuen Zähler hinzufügen</h2>
-              <div className="flex gap-4 flex-wrap">
-                <input
-                  type="text"
-                  value={newCounterName}
-                  onChange={(e) => setNewCounterName(e.target.value)}
-                  placeholder="Zählername eingeben..."
-                  className="flex-1 min-w-48 px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                  onKeyPress={(e) => e.key === 'Enter' && !loading && addCounter()}
-                  disabled={loading}
-                />
-                <input
-                  type="number"
-                  value={newCounterMax}
-                  onChange={(e) => setNewCounterMax(e.target.value)}
-                  placeholder="Maximum (optional)"
-                  min="1"
-                  className="w-32 px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                  onKeyPress={(e) => e.key === 'Enter' && !loading && addCounter()}
-                  disabled={loading}
-                />
-                <div className="relative">
+            {hasAuthenticatedRole && (
+              <div className="bg-white/10 rounded-xl p-6 mb-8">
+                <h2 className="text-2xl font-bold mb-4">Neuen Zähler hinzufügen</h2>
+                <div className="flex gap-4 flex-wrap">
                   <input
                     type="text"
-                    value={newCounterCategory}
-                    onChange={(e) => setNewCounterCategory(e.target.value)}
-                    placeholder="Kategorie (optional)"
-                    list="categories"
-                    className="w-40 px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    value={newCounterName}
+                    onChange={(e) => setNewCounterName(e.target.value)}
+                    placeholder="Zählername eingeben..."
+                    className="flex-1 min-w-48 px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                     onKeyPress={(e) => e.key === 'Enter' && !loading && addCounter()}
                     disabled={loading}
                   />
-                  {existingCategories.length > 0 && (
-                    <datalist id="categories">
-                      {existingCategories.map((category) => (
-                        <option key={category} value={category} />
-                      ))}
-                    </datalist>
-                  )}
+                  <input
+                    type="number"
+                    value={newCounterMax}
+                    onChange={(e) => setNewCounterMax(e.target.value)}
+                    placeholder="Maximum (optional)"
+                    min="1"
+                    className="w-32 px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    onKeyPress={(e) => e.key === 'Enter' && !loading && addCounter()}
+                    disabled={loading}
+                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={newCounterCategory}
+                      onChange={(e) => setNewCounterCategory(e.target.value)}
+                      placeholder="Kategorie (optional)"
+                      list="categories"
+                      className="w-40 px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                      onKeyPress={(e) => e.key === 'Enter' && !loading && addCounter()}
+                      disabled={loading}
+                    />
+                    {existingCategories.length > 0 && (
+                      <datalist id="categories">
+                        {existingCategories.map((category) => (
+                          <option key={category} value={category} />
+                        ))}
+                      </datalist>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={newCounterInfo}
+                    onChange={(e) => setNewCounterInfo(e.target.value)}
+                    placeholder="Info (optional)"
+                    className="w-48 px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                    onKeyPress={(e) => e.key === 'Enter' && !loading && addCounter()}
+                    disabled={loading}
+                  />
+                  <button
+                    onClick={addCounter}
+                    disabled={loading}
+                    className="px-6 py-2 bg-yellow-400 text-blue-800 font-bold rounded-lg hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? 'Wird hinzugefügt...' : 'Zähler hinzufügen'}
+                  </button>
                 </div>
-                <input
-                  type="text"
-                  value={newCounterInfo}
-                  onChange={(e) => setNewCounterInfo(e.target.value)}
-                  placeholder="Info (optional)"
-                  className="w-48 px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                  onKeyPress={(e) => e.key === 'Enter' && !loading && addCounter()}
-                  disabled={loading}
-                />
-                <button
-                  onClick={addCounter}
-                  disabled={loading}
-                  className="px-6 py-2 bg-yellow-400 text-blue-800 font-bold rounded-lg hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Wird hinzugefügt...' : 'Zähler hinzufügen'}
-                </button>
               </div>
-            </div>
+            )}
 
             {/* Category filter tabs */}
             {existingCategories.length > 0 && (
@@ -786,24 +823,26 @@ export default function HomePage() {
                             {/* Main action buttons */}
                             <div className="flex gap-2 items-center">
                               {/* Desktop edit/delete - small icons */}
-                              <div className="hidden sm:flex gap-1 items-center opacity-70 hover:opacity-100 transition-opacity mr-2">
-                                <button
-                                  onClick={() => startEditing(counter)}
-                                  className="w-8 h-8 bg-blue-500 hover:bg-blue-400 text-white font-bold text-xs rounded-md transition-colors disabled:opacity-50"
-                                  title="Zähler bearbeiten"
-                                  disabled={loading}
-                                >
-                                  ✏️
-                                </button>
-                                <button
-                                  onClick={() => removeCounter(counter.id)}
-                                  className="w-8 h-8 bg-red-500 hover:bg-red-400 text-white font-bold text-xs rounded-md transition-colors disabled:opacity-50"
-                                  title="Zähler löschen"
-                                  disabled={loading || isEditing}
-                                >
-                                  🗑️
-                                </button>
-                              </div>
+                              {hasAuthenticatedRole && (
+                                <div className="hidden sm:flex gap-1 items-center opacity-70 hover:opacity-100 transition-opacity mr-2">
+                                  <button
+                                    onClick={() => startEditing(counter)}
+                                    className="w-8 h-8 bg-blue-500 hover:bg-blue-400 text-white font-bold text-xs rounded-md transition-colors disabled:opacity-50"
+                                    title="Zähler bearbeiten"
+                                    disabled={loading}
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    onClick={() => removeCounter(counter.id)}
+                                    className="w-8 h-8 bg-red-500 hover:bg-red-400 text-white font-bold text-xs rounded-md transition-colors disabled:opacity-50"
+                                    title="Zähler löschen"
+                                    disabled={loading || isEditing}
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              )}
 
                               {/* Mobile menu toggle */}
                               <button
@@ -851,24 +890,26 @@ export default function HomePage() {
                           )}
 
                           {/* Edit/Delete actions - mobile only */}
-                          <div className={`flex gap-2 sm:hidden ${isMenuExpanded ? 'block' : 'hidden'}`}>
-                            <button
-                              onClick={() => startEditing(counter)}
-                              className="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium rounded transition-colors disabled:opacity-50"
-                              title="Zähler bearbeiten"
-                              disabled={loading}
-                            >
-                              ✏️ Bearbeiten
-                            </button>
-                            <button
-                              onClick={() => removeCounter(counter.id)}
-                              className="flex-1 px-3 py-2 bg-red-500 hover:bg-red-400 text-white text-sm font-medium rounded transition-colors disabled:opacity-50"
-                              title="Zähler löschen"
-                              disabled={loading || isEditing}
-                            >
-                              🗑️ Löschen
-                            </button>
-                          </div>
+                          {hasAuthenticatedRole && (
+                            <div className={`flex gap-2 sm:hidden ${isMenuExpanded ? 'block' : 'hidden'}`}>
+                              <button
+                                onClick={() => startEditing(counter)}
+                                className="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-medium rounded transition-colors disabled:opacity-50"
+                                title="Zähler bearbeiten"
+                                disabled={loading}
+                              >
+                                ✏️ Bearbeiten
+                              </button>
+                              <button
+                                onClick={() => removeCounter(counter.id)}
+                                className="flex-1 px-3 py-2 bg-red-500 hover:bg-red-400 text-white text-sm font-medium rounded transition-colors disabled:opacity-50"
+                                title="Zähler löschen"
+                                disabled={loading || isEditing}
+                              >
+                                🗑️ Löschen
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
