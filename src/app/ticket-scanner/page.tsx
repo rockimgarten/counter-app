@@ -21,7 +21,7 @@ export default function TicketScannerPage() {
         const normalizedCode = (valueToValidate ?? qrCode).trim();
 
         if (!normalizedCode) {
-            setError('Please enter a code');
+            setError('Bitte geben Sie einen Code ein');
             return;
         }
 
@@ -34,12 +34,13 @@ export default function TicketScannerPage() {
             const data = await res.json();
 
             if (!res.ok) {
-                setError(data.error || 'Failed to validate code');
+                setError(data.error || 'Code konnte nicht geprüft werden');
             } else {
                 setResponse(data);
+                await syncValidatedQrCode(normalizedCode, data);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to validate code');
+            setError(err instanceof Error ? err.message : 'Code konnte nicht geprüft werden');
         } finally {
             setLoading(false);
         }
@@ -49,9 +50,56 @@ export default function TicketScannerPage() {
         void validateQrCode();
     };
 
+    const syncValidatedQrCode = async (code: string, validationData: any) => {
+        const hasValidMatch = Boolean(
+            validationData?.matched_bestellung ||
+            validationData?.matched_qr_codes_by_bestellnummer?.length ||
+            validationData?.qr_codes?.length
+        );
+
+        if (!hasValidMatch) {
+            return;
+        }
+
+        const matchedOrder = validationData?.matched_bestellung;
+        const firstPosition = matchedOrder?.attributes?.posten?.[0] ?? matchedOrder?.posten?.[0] ?? validationData?.posten?.[0];
+        const positionName = firstPosition?.name ?? firstPosition?.posten ?? null;
+        const orderId = matchedOrder?.id ?? matchedOrder?.attributes?.id ?? null;
+
+        try {
+            const authToken = typeof window !== 'undefined' ? window.localStorage.getItem('authToken') : null;
+            const syncRes = await fetch('/api/e-ticket-app-data-rigs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+                },
+                body: JSON.stringify({
+                    qr_code_data: code,
+                    name: positionName,
+                    bestellung: orderId,
+                    valid: true,
+                }),
+            });
+
+            if (!syncRes.ok) {
+                const syncErrorBody = await syncRes.json().catch(() => null);
+                const syncErrorMessage = syncErrorBody?.error || 'Failed to sync validated QR code to Strapi';
+
+                if (/already used|already exists|duplicate|unique/i.test(syncErrorMessage)) {
+                    setError('Dieser QR-Code wird bereits verwendet.');
+                } else {
+                    console.error('Failed to sync validated QR code to Strapi:', syncErrorMessage);
+                }
+            }
+        } catch (syncError) {
+            console.error('Failed to sync validated QR code to Strapi:', syncError);
+        }
+    };
+
     const validateOrderNumber = async () => {
         if (!orderNumber.trim()) {
-            setError('Please enter a bestellnummer');
+            setError('Bitte geben Sie eine Bestellnummer ein');
             return;
         }
 
@@ -64,12 +112,12 @@ export default function TicketScannerPage() {
             const data = await res.json();
 
             if (!res.ok) {
-                setError(data.error || 'Failed to validate order number');
+                setError(data.error || 'Bestellnummer konnte nicht geprüft werden');
             } else {
                 setResponse(data);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to validate order number');
+            setError(err instanceof Error ? err.message : 'Bestellnummer konnte nicht geprüft werden');
         } finally {
             setLoading(false);
         }
@@ -89,7 +137,7 @@ export default function TicketScannerPage() {
         const startCamera = async () => {
             try {
                 if (!navigator.mediaDevices?.getUserMedia) {
-                    throw new Error('Your browser does not support camera access.');
+                    throw new Error('Ihr Browser unterstützt keinen Kamerazugriff.');
                 }
 
                 stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -146,7 +194,7 @@ export default function TicketScannerPage() {
                 scanFrame();
             } catch (err) {
                 if (!cancelled) {
-                    setCameraError(err instanceof Error ? err.message : 'Camera access failed');
+                    setCameraError(err instanceof Error ? err.message : 'Kamerazugriff fehlgeschlagen');
                     setIsScanning(false);
                 }
             }
@@ -241,20 +289,20 @@ export default function TicketScannerPage() {
 
                 {/* Content placeholder */}
                 <div className="bg-white/10 rounded-xl p-8 max-w-2xl mx-auto">
-                    <h2 className="text-2xl font-bold mb-6 text-center">Validate QR Code</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-center">QR-Code prüfen</h2>
 
                     <div className="mb-6 flex rounded-full bg-white/10 p-1">
                         <button
                             onClick={() => setSearchMode('qr')}
                             className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${searchMode === 'qr' ? 'bg-yellow-400 text-blue-800' : 'text-white/80 hover:bg-white/20'}`}
                         >
-                            Via QR Code
+                            Per QR-Code
                         </button>
                         <button
                             onClick={() => setSearchMode('order')}
                             className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${searchMode === 'order' ? 'bg-yellow-400 text-blue-800' : 'text-white/80 hover:bg-white/20'}`}
                         >
-                            Via Bestellnummer
+                            Per Bestellnummer
                         </button>
                     </div>
 
@@ -269,7 +317,7 @@ export default function TicketScannerPage() {
                                             setQrCode(e.target.value);
                                         }}
                                         onKeyPress={(e) => e.key === 'Enter' && !loading && validateQrCode()}
-                                        placeholder="Enter QR code or ticket code..."
+                                        placeholder="QR-Code oder Ticket-Code eingeben..."
                                         className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                                         disabled={loading}
                                     />
@@ -281,27 +329,23 @@ export default function TicketScannerPage() {
                                         disabled={loading}
                                         className="flex-1 px-4 py-3 bg-yellow-400 text-blue-800 font-bold rounded-lg hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
-                                        {loading ? 'Validating...' : 'Validate Code'}
+                                        {loading ? 'Wird geprüft...' : 'Code prüfen'}
                                     </button>
                                     <button
                                         onClick={isScanning ? stopCameraScan : startCameraScan}
                                         className="px-4 py-3 bg-white/20 text-white font-semibold rounded-lg hover:bg-white/30 transition-colors"
                                     >
-                                        {isScanning ? 'Stop Camera' : 'Scan with Camera'}
+                                        {isScanning ? 'Kamera stoppen' : 'Mit Kamera scannen'}
                                     </button>
                                 </div>
 
                                 <div className="rounded-lg border border-white/20 bg-black/20 p-3">
-                                    {isScanning ? (
+                                    {isScanning && (
                                         <>
                                             <video ref={videoRef} className="w-full rounded-lg bg-black" playsInline muted />
                                             <canvas ref={canvasRef} className="hidden" />
-                                            <p className="mt-2 text-sm text-white/70">Point your camera at the QR code and hold still.</p>
+                                            <p className="mt-2 text-sm text-white/70">Richten Sie die Kamera auf den QR-Code und bleiben Sie ruhig.</p>
                                         </>
-                                    ) : (
-                                        <div className="rounded-lg border border-dashed border-white/20 p-4 text-center text-sm text-white/70">
-                                            Use the camera button to scan a QR code directly from your phone.
-                                        </div>
                                     )}
                                 </div>
 
@@ -319,7 +363,7 @@ export default function TicketScannerPage() {
                                         value={orderNumber}
                                         onChange={(e) => setOrderNumber(e.target.value)}
                                         onKeyPress={(e) => e.key === 'Enter' && !loading && validateOrderNumber()}
-                                        placeholder="Enter bestellnummer..."
+                                        placeholder="Bestellnummer eingeben..."
                                         className="w-full px-4 py-3 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                                         disabled={loading}
                                     />
@@ -330,7 +374,7 @@ export default function TicketScannerPage() {
                                     disabled={loading}
                                     className="w-full px-4 py-3 bg-yellow-400 text-blue-800 font-bold rounded-lg hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    {loading ? 'Searching...' : 'Search Order'}
+                                    {loading ? 'Wird gesucht...' : 'Bestellung suchen'}
                                 </button>
                             </>
                         )}
