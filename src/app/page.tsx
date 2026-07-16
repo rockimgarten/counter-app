@@ -11,6 +11,7 @@ interface Counter {
   count: number;
   max?: number;
   category?: string;
+  info?: string;
 }
 
 interface User {
@@ -42,6 +43,7 @@ interface ApiCounter {
     amount: number;
     max: number | null;
     category: string | null;
+    info: string | null;
     createdAt: string;
     updatedAt: string;
     publishedAt: string | null;
@@ -121,7 +123,8 @@ const fetchCounters = async (token: string): Promise<Counter[]> => {
       name: apiCounter.attributes.name,
       count: apiCounter.attributes.amount,
       max: apiCounter.attributes.max || undefined,
-      category: apiCounter.attributes.category || undefined
+      category: apiCounter.attributes.category || undefined,
+      info: apiCounter.attributes.info || undefined
     }));
   } catch (error) {
     console.error('Zähler konnten nicht geladen werden:', error);
@@ -129,7 +132,7 @@ const fetchCounters = async (token: string): Promise<Counter[]> => {
   }
 };
 
-const createCounter = async (name: string, max?: number, category?: string, token?: string): Promise<Counter | null> => {
+const createCounter = async (name: string, max?: number, category?: string, info?: string, token?: string): Promise<Counter | null> => {
   if (!token) return null;
 
   try {
@@ -144,7 +147,8 @@ const createCounter = async (name: string, max?: number, category?: string, toke
           name,
           amount: 0,
           max: max || null,
-          category: category || null
+          category: category || null,
+          info: info || null
         }
       })
     });
@@ -160,7 +164,8 @@ const createCounter = async (name: string, max?: number, category?: string, toke
       name: result.data.attributes.name,
       count: result.data.attributes.amount,
       max: result.data.attributes.max || undefined,
-      category: result.data.attributes.category || undefined
+      category: result.data.attributes.category || undefined,
+      info: result.data.attributes.info || undefined
     };
   } catch (error) {
     console.error('Zähler konnte nicht erstellt werden:', error);
@@ -168,7 +173,7 @@ const createCounter = async (name: string, max?: number, category?: string, toke
   }
 };
 
-const updateCounterDetails = async (serverId: number, name: string, max?: number, category?: string, token?: string): Promise<boolean> => {
+const updateCounterDetails = async (serverId: number, name: string, max?: number, category?: string, info?: string, token?: string): Promise<boolean> => {
   if (!token) return false;
 
   try {
@@ -182,7 +187,8 @@ const updateCounterDetails = async (serverId: number, name: string, max?: number
         data: {
           name,
           max: max || null,
-          category: category || null
+          category: category || null,
+          info: info || null
         }
       })
     });
@@ -239,12 +245,14 @@ export default function HomePage() {
   const [newCounterName, setNewCounterName] = useState('');
   const [newCounterMax, setNewCounterMax] = useState('');
   const [newCounterCategory, setNewCounterCategory] = useState('');
+  const [newCounterInfo, setNewCounterInfo] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingMax, setEditingMax] = useState('');
   const [editingCategory, setEditingCategory] = useState('');
+  const [editingInfo, setEditingInfo] = useState('');
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(new Set());
 
   // Authentication state
@@ -305,6 +313,7 @@ export default function HomePage() {
     setEditingName(counter.name);
     setEditingMax(counter.max?.toString() || '');
     setEditingCategory(counter.category || '');
+    setEditingInfo(counter.info || '');
   };
 
   const saveEdit = async () => {
@@ -313,18 +322,20 @@ export default function HomePage() {
 
     const maxValue = editingMax.trim() ? parseInt(editingMax) : undefined;
     const category = editingCategory.trim() || undefined;
+    const info = editingInfo.trim() || undefined;
 
-    const success = await updateCounterDetails(counter.serverId, editingName.trim(), maxValue, category, token);
+    const success = await updateCounterDetails(counter.serverId, editingName.trim(), maxValue, category, info, token);
     if (success) {
       setCounters(counters.map(c =>
         c.id === editingId
-          ? { ...c, name: editingName.trim(), max: maxValue, category }
+          ? { ...c, name: editingName.trim(), max: maxValue, category, info }
           : c
       ));
       setEditingId(null);
       setEditingName('');
       setEditingMax('');
       setEditingCategory('');
+      setEditingInfo('');
     }
   };
 
@@ -333,6 +344,7 @@ export default function HomePage() {
     setEditingName('');
     setEditingMax('');
     setEditingCategory('');
+    setEditingInfo('');
   };
 
   const toggleMenu = (counterId: string) => {
@@ -378,13 +390,15 @@ export default function HomePage() {
       setLoading(true);
       const maxValue = newCounterMax.trim() ? parseInt(newCounterMax) : undefined;
       const category = newCounterCategory.trim() || undefined;
-      const newCounter = await createCounter(newCounterName.trim(), maxValue, category, token);
+      const info = newCounterInfo.trim() || undefined;
+      const newCounter = await createCounter(newCounterName.trim(), maxValue, category, info, token);
 
       if (newCounter) {
         setCounters([...counters, newCounter]);
         setNewCounterName('');
         setNewCounterMax('');
         setNewCounterCategory('');
+        setNewCounterInfo('');
       }
       setLoading(false);
     }
@@ -598,6 +612,15 @@ export default function HomePage() {
                     </datalist>
                   )}
                 </div>
+                <input
+                  type="text"
+                  value={newCounterInfo}
+                  onChange={(e) => setNewCounterInfo(e.target.value)}
+                  placeholder="Info (optional)"
+                  className="w-48 px-4 py-2 rounded-lg bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  onKeyPress={(e) => e.key === 'Enter' && !loading && addCounter()}
+                  disabled={loading}
+                />
                 <button
                   onClick={addCounter}
                   disabled={loading}
@@ -615,8 +638,8 @@ export default function HomePage() {
                   <button
                     onClick={() => setSelectedCategory('all')}
                     className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedCategory === 'all'
-                        ? 'bg-yellow-400 text-blue-800'
-                        : 'bg-white/10 text-white hover:bg-white/20'
+                      ? 'bg-yellow-400 text-blue-800'
+                      : 'bg-white/10 text-white hover:bg-white/20'
                       }`}
                   >
                     Alle ({counters.length})
@@ -628,8 +651,8 @@ export default function HomePage() {
                         key={category}
                         onClick={() => category && setSelectedCategory(category)}
                         className={`px-4 py-2 rounded-lg font-medium transition-colors ${selectedCategory === category
-                            ? 'bg-yellow-400 text-blue-800'
-                            : 'bg-white/10 text-white hover:bg-white/20'
+                          ? 'bg-yellow-400 text-blue-800'
+                          : 'bg-white/10 text-white hover:bg-white/20'
                           }`}
                       >
                         {category} ({categoryCount})
@@ -667,8 +690,8 @@ export default function HomePage() {
                     <div
                       key={counter.id}
                       className={`rounded-xl p-4 transition-colors ${isCompleted
-                          ? 'bg-green-500/20 border-2 border-green-500/50'
-                          : 'bg-white/10 border-2 border-transparent'
+                        ? 'bg-green-500/20 border-2 border-green-500/50'
+                        : 'bg-white/10 border-2 border-transparent'
                         }`}
                     >
                       {isEditing ? (
@@ -696,6 +719,13 @@ export default function HomePage() {
                               placeholder="Kategorie"
                               list="edit-categories"
                               className="w-32 px-3 py-1 rounded bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                            />
+                            <input
+                              type="text"
+                              value={editingInfo}
+                              onChange={(e) => setEditingInfo(e.target.value)}
+                              placeholder="Info"
+                              className="w-40 px-3 py-1 rounded bg-white/20 border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                             />
                             {existingCategories.length > 0 && (
                               <datalist id="edit-categories">
@@ -738,6 +768,11 @@ export default function HomePage() {
                                 {counter.category && (
                                   <span className="bg-blue-500 text-white px-2 py-0.5 rounded text-xs font-medium hidden sm:inline-block">
                                     {counter.category}
+                                  </span>
+                                )}
+                                {counter.info && (
+                                  <span className="bg-white/20 text-white px-2 py-0.5 rounded text-xs font-medium hidden sm:inline-block">
+                                    {counter.info}
                                   </span>
                                 )}
                                 {isCompleted && (
@@ -800,11 +835,18 @@ export default function HomePage() {
                           </div>
 
                           {/* Category on mobile when not enough space */}
-                          {counter.category && (
+                          {(counter.category || counter.info) && (
                             <div className="sm:hidden">
-                              <span className="bg-blue-500 text-white px-2 py-0.5 rounded text-xs font-medium">
-                                {counter.category}
-                              </span>
+                              {counter.category && (
+                                <span className="bg-blue-500 text-white px-2 py-0.5 rounded text-xs font-medium">
+                                  {counter.category}
+                                </span>
+                              )}
+                              {counter.info && (
+                                <span className="ml-2 bg-white/20 text-white px-2 py-0.5 rounded text-xs font-medium">
+                                  {counter.info}
+                                </span>
+                              )}
                             </div>
                           )}
 
