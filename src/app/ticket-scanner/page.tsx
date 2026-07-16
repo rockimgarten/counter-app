@@ -11,6 +11,7 @@ export default function TicketScannerPage() {
     const [loading, setLoading] = useState(false);
     const [response, setResponse] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
+    const [responseVisible, setResponseVisible] = useState(false);
     const [searchMode, setSearchMode] = useState<'qr' | 'order'>('qr');
     const [isScanning, setIsScanning] = useState(false);
     const [cameraError, setCameraError] = useState<string | null>(null);
@@ -28,6 +29,7 @@ export default function TicketScannerPage() {
         setLoading(true);
         setError(null);
         setResponse(null);
+        setResponseVisible(false);
 
         try {
             const res = await fetch(`/api/validate-qr?qr=${encodeURIComponent(normalizedCode)}`);
@@ -36,8 +38,10 @@ export default function TicketScannerPage() {
             if (!res.ok) {
                 setError(data.error || 'Code konnte nicht geprüft werden');
             } else {
-                setResponse(data);
+                // Wait for any backend sync to complete before showing the response
                 await syncValidatedQrCode(normalizedCode, data);
+                setResponse(data);
+                setResponseVisible(true);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Code konnte nicht geprüft werden');
@@ -106,6 +110,7 @@ export default function TicketScannerPage() {
         setLoading(true);
         setError(null);
         setResponse(null);
+        setResponseVisible(false);
 
         try {
             const res = await fetch(`/api/validate-qr?bestellnummer=${encodeURIComponent(orderNumber)}`);
@@ -115,6 +120,7 @@ export default function TicketScannerPage() {
                 setError(data.error || 'Bestellnummer konnte nicht geprüft werden');
             } else {
                 setResponse(data);
+                setResponseVisible(true);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Bestellnummer konnte nicht geprüft werden');
@@ -126,6 +132,7 @@ export default function TicketScannerPage() {
     const matchedOrder = response?.matched_bestellung;
     const qrCodes = matchedOrder?.qr_codes || response?.qr_codes || [];
     const orderQrCodes = response?.matched_qr_codes_by_bestellnummer || [];
+    const isDuplicateQrError = error?.includes('bereits verwendet') || false;
 
     useEffect(() => {
         if (!isScanning) return;
@@ -385,8 +392,8 @@ export default function TicketScannerPage() {
                             </div>
                         )}
 
-                        {response && (
-                            <div className="p-4 bg-green-500/20 border border-green-500 rounded-lg text-green-200">
+                        {response && responseVisible && (
+                            <div className={`p-4 border rounded-lg ${isDuplicateQrError ? 'bg-red-500/20 border-red-500 text-red-200' : 'bg-green-500/20 border-green-500 text-green-200'}`}>
                                 {orderQrCodes.length > 0 ? (
                                     <div className="space-y-4 text-left">
                                         <div>
