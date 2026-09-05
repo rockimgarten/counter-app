@@ -133,6 +133,7 @@ export default function TicketScannerPage() {
     const qrCodes = matchedOrder?.qr_codes || response?.qr_codes || [];
     const orderQrCodes = response?.matched_qr_codes_by_bestellnummer || [];
     const isDuplicateQrError = error?.includes('bereits verwendet') || false;
+    const isInvalidTicket = Boolean(response) && !matchedOrder && orderQrCodes.length === 0;
 
     useEffect(() => {
         if (!isScanning) return;
@@ -393,7 +394,7 @@ export default function TicketScannerPage() {
                         )}
 
                         {response && responseVisible && (
-                            <div className={`p-4 border rounded-lg ${isDuplicateQrError ? 'bg-red-500/20 border-red-500 text-red-200' : 'bg-green-500/20 border-green-500 text-green-200'}`}>
+                            <div className={`p-4 border rounded-lg ${isDuplicateQrError || isInvalidTicket ? 'bg-red-500/20 border-red-500 text-red-200' : 'bg-green-500/20 border-green-500 text-green-200'}`}>
                                 {orderQrCodes.length > 0 ? (
                                     <div className="space-y-4 text-left">
                                         <div>
