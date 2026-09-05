@@ -133,7 +133,10 @@ export default function TicketScannerPage() {
     const qrCodes = matchedOrder?.qr_codes || response?.qr_codes || [];
     const orderQrCodes = response?.matched_qr_codes_by_bestellnummer || [];
     const isDuplicateQrError = error?.includes('bereits verwendet') || false;
-    const isInvalidTicket = Boolean(response) && !matchedOrder && orderQrCodes.length === 0;
+    const validationMessage = response?.message ?? response?.error ?? response?.data?.message;
+    const validationSucceeded = response?.valid === true || response?.success === true || response?.is_valid === true;
+    const validatedTicket = response?.ticket ?? response?.data?.ticket ?? response?.data;
+    const isInvalidTicket = Boolean(response) && !matchedOrder && orderQrCodes.length === 0 && !validationSucceeded;
 
     useEffect(() => {
         if (!isScanning) return;
@@ -501,12 +504,19 @@ export default function TicketScannerPage() {
                                     </div>
                                 ) : (
                                     <div className="text-sm text-white/80">
-                                        <div className="font-semibold text-white">Ticket nicht gueltig</div>
+                                        <div className="font-semibold text-white">
+                                            {validationSucceeded ? 'Ticket gueltig' : 'Ticket nicht gueltig'}
+                                        </div>
                                         <p className="mt-2">
-                                            {typeof response?.message === 'string'
-                                                ? response.message
-                                                : 'Zu diesem Code wurde kein gueltiges Ticket gefunden.'}
+                                            {typeof validationMessage === 'string'
+                                                ? validationMessage
+                                                : validationSucceeded
+                                                    ? 'Der Ticket-Code wurde erfolgreich geprueft.'
+                                                    : 'Zu diesem Code wurde kein gueltiges Ticket gefunden.'}
                                         </p>
+                                        {validationSucceeded && typeof validatedTicket?.ticket_no === 'string' && (
+                                            <p className="mt-2 text-white/80">Ticket-Nr.: {validatedTicket.ticket_no}</p>
+                                        )}
                                     </div>
                                 )}
                             </div>
