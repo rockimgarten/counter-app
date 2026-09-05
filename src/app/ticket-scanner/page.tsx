@@ -500,10 +500,12 @@ export default function TicketScannerPage() {
                                     </div>
                                 ) : (
                                     <div className="text-sm text-white/80">
-                                        <div className="font-semibold text-white">Antwort:</div>
-                                        <pre className="mt-2 overflow-auto whitespace-pre-wrap break-words text-sm text-white/80">
-                                            {JSON.stringify(response, null, 2)}
-                                        </pre>
+                                        <div className="font-semibold text-white">Ticket nicht gueltig</div>
+                                        <p className="mt-2">
+                                            {typeof response?.message === 'string'
+                                                ? response.message
+                                                : 'Zu diesem Code wurde kein gueltiges Ticket gefunden.'}
+                                        </p>
                                     </div>
                                 )}
                             </div>
