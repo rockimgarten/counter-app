@@ -90,9 +90,14 @@ export default function TicketScannerPage() {
                 const syncErrorBody = await syncRes.json().catch(() => null);
                 const syncErrorMessage = syncErrorBody?.error || 'Failed to sync validated QR code to Strapi';
 
-                if (/already used|already exists|duplicate|unique/i.test(syncErrorMessage)) {
+                if (syncRes.status === 401 || syncRes.status === 403) {
+                    window.localStorage.removeItem('authToken');
+                    window.localStorage.removeItem('user');
+                    setError('Ihre Anmeldung ist abgelaufen. Bitte melden Sie sich erneut in der Counter App an.');
+                } else if (/already used|already exists|duplicate|unique/i.test(syncErrorMessage)) {
                     setError('Dieser QR-Code wird bereits verwendet.');
                 } else {
+                    setError('Der Scan konnte nicht gespeichert werden.');
                     console.error('Failed to sync validated QR code to Strapi:', syncErrorMessage);
                 }
             }
